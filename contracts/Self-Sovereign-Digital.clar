@@ -5,6 +5,9 @@
 (define-constant ERR-PERMISSION-DENIED (err u104))
 (define-constant ERR-IDENTITY-EXISTS (err u105))
 (define-constant ERR-INVALID-EXPIRY (err u106))
+(define-constant ERR-SELF-ENDORSEMENT (err u107))
+(define-constant ERR-ENDORSEMENT-NOT-FOUND (err u108))
+(define-constant ERR-ALREADY-ENDORSED (err u109))
 
 (define-map identities
   { owner: principal }
@@ -292,5 +295,102 @@
         false
       )
     )
+  )
+)
+
+
+(define-map endorsements
+  { endorser: principal, endorsee: principal }
+  {
+    weight: uint,
+    reason: (string-ascii 128),
+    created-at: uint,
+    is-active: bool
+  }
+)
+
+(define-map reputation-scores
+  { identity: principal }
+  {
+    total-score: uint,
+    endorsement-count: uint,
+    last-updated: uint
+  }
+)
+
+(define-public (endorse-identity (endorsee principal) (weight uint) (reason (string-ascii 128)))
+  (let ((endorser tx-sender))
+    (asserts! (not (is-eq endorser endorsee)) ERR-SELF-ENDORSEMENT)
+    (asserts! (and (>= weight u1) (<= weight u10)) ERR-NOT-AUTHORIZED)
+    (asserts! (is-none (map-get? endorsements { endorser: endorser, endorsee: endorsee })) ERR-ALREADY-ENDORSED)
+    (map-set endorsements
+      { endorser: endorser, endorsee: endorsee }
+      {
+        weight: weight,
+        reason: reason,
+        created-at: stacks-block-height,
+        is-active: true
+      }
+    )
+    (update-reputation-score endorsee)
+    (ok true)
+  )
+)
+
+(define-public (revoke-endorsement (endorsee principal))
+  (let ((endorser tx-sender))
+    (match (map-get? endorsements { endorser: endorser, endorsee: endorsee })
+      endorsement-data
+      (begin
+        (asserts! (get is-active endorsement-data) ERR-ENDORSEMENT-NOT-FOUND)
+        (map-set endorsements
+          { endorser: endorser, endorsee: endorsee }
+          (merge endorsement-data { is-active: false })
+        )
+        (update-reputation-score endorsee)
+        (ok true)
+      )
+      ERR-ENDORSEMENT-NOT-FOUND
+    )
+  )
+)
+
+(define-private (update-reputation-score (identity principal))
+  (let (
+    (score-data (calculate-reputation-score identity))
+  )
+    (map-set reputation-scores
+      { identity: identity }
+      {
+        total-score: (get total-score score-data),
+        endorsement-count: (get endorsement-count score-data),
+        last-updated: stacks-block-height
+      }
+    )
+  )
+)
+
+(define-private (calculate-reputation-score (identity principal))
+  (let (
+    (current-score (default-to { total-score: u0, endorsement-count: u0, last-updated: u0 }
+                   (map-get? reputation-scores { identity: identity })))
+  )
+    { total-score: u0, endorsement-count: u0 }
+  )
+)
+
+(define-read-only (get-reputation-score (identity principal))
+  (map-get? reputation-scores { identity: identity })
+)
+
+(define-read-only (get-endorsement (endorser principal) (endorsee principal))
+  (map-get? endorsements { endorser: endorser, endorsee: endorsee })
+)
+
+(define-read-only (has-endorsed (endorser principal) (endorsee principal))
+  (match (map-get? endorsements { endorser: endorser, endorsee: endorsee })
+    endorsement-data
+    (get is-active endorsement-data)
+    false
   )
 )
