@@ -1,0 +1,36 @@
+[project]
+name = 'Self-Sovereign-Digital'
+description = ''
+authors = []
+telemetry = true
+cache_dir = '.\.cache'
+requirements = []
+[contracts.Self-Sovereign-Digital]
+path = 'contracts/Self-Sovereign-Digital.clar'
+clarity_version = 3
+epoch = 3.1
+[contracts.identity-backup]
+path = 'contracts/identity-backup.clar'
+clarity_version = 3
+epoch = 3.1
+[contracts.identity-credentials]
+path = 'contracts/identity-credentials.clar'
+clarity_version = 3
+epoch = 3.1
+[contracts.credential-delegation]
+path = 'contracts/credential-delegation.clar'
+clarity_version = 3
+epoch = 3.1
+
+[repl.analysis]
+passes = ['check_checker']
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
+
+[repl.remote_data]
+enabled = false
+api_url = 'https://api.hiro.so'
