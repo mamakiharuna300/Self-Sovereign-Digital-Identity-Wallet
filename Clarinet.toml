@@ -21,6 +21,10 @@ epoch = 3.1
 path = 'contracts/credential-delegation.clar'
 clarity_version = 3
 epoch = 3.1
+[contracts.credential-attestation]
+path = 'contracts/credential-attestation.clar'
+clarity_version = 3
+epoch = 3.1
 
 [repl.analysis]
 passes = ['check_checker']
